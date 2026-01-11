@@ -10,17 +10,17 @@ import (
 // It defines a tiny internal gRPC contract for CHILD -> HOST -> HUB proxying.
 
 type ProxyCommandRequest struct {
-	HubDeviceId    string
-	ChildRef       string
-	EndpointKey    string
-	Payload        []byte
-	CorrelationId  string
+	HubDeviceId   string
+	ChildRef      string
+	EndpointKey   string
+	Payload       []byte
+	CorrelationId string
 }
 
 type ProxyCommandResponse struct {
-	Success bool
-	Message string
-	Data    []byte
+	Success       bool
+	Message       string
+	Data          []byte
 	CorrelationId string
 }
 
@@ -89,14 +89,12 @@ func NewHubGatewayServiceClient(cc grpc.ClientConnInterface) HubGatewayServiceCl
 }
 
 func (c *hubGatewayServiceClient) OpenHubSession(ctx context.Context, opts ...grpc.CallOption) (HubGatewayService_OpenHubSessionClient, error) {
-	stream, err := c.cc.NewStream(ctx, &grpc.ServiceDesc{
-		ServiceName: "nx.internal.HubGatewayService",
-		Streams: []grpc.StreamDesc{{
-			StreamName:    "OpenHubSession",
-			ServerStreams: true,
-			ClientStreams: true,
-		}},
-	}, "/nx.internal.HubGatewayService/OpenHubSession", opts...)
+	streamDesc := &grpc.StreamDesc{
+		StreamName:    "OpenHubSession",
+		ServerStreams: true,
+		ClientStreams: true,
+	}
+	stream, err := c.cc.NewStream(ctx, streamDesc, "/nx.internal.HubGatewayService/OpenHubSession", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +109,9 @@ type HubGatewayService_OpenHubSessionClient interface {
 
 type hubGatewayServiceOpenHubSessionClient struct{ grpc.ClientStream }
 
-func (x *hubGatewayServiceOpenHubSessionClient) Send(m *ProxyCommandResponse) error { return x.ClientStream.SendMsg(m) }
+func (x *hubGatewayServiceOpenHubSessionClient) Send(m *ProxyCommandResponse) error {
+	return x.ClientStream.SendMsg(m)
+}
 func (x *hubGatewayServiceOpenHubSessionClient) Recv() (*ProxyCommandRequest, error) {
 	m := new(ProxyCommandRequest)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
@@ -162,7 +162,9 @@ func _HubGatewayService_OpenHubSession_Handler(srv HubGatewayServiceServer) grpc
 
 type hubGatewayServiceOpenHubSessionServer struct{ grpc.ServerStream }
 
-func (x *hubGatewayServiceOpenHubSessionServer) Send(m *ProxyCommandRequest) error { return x.ServerStream.SendMsg(m) }
+func (x *hubGatewayServiceOpenHubSessionServer) Send(m *ProxyCommandRequest) error {
+	return x.ServerStream.SendMsg(m)
+}
 func (x *hubGatewayServiceOpenHubSessionServer) Recv() (*ProxyCommandResponse, error) {
 	m := new(ProxyCommandResponse)
 	if err := x.ServerStream.RecvMsg(m); err != nil {

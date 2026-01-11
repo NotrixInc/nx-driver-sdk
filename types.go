@@ -1,7 +1,6 @@
 package driversdk
 
 import (
-	"context"
 	"encoding/json"
 	"time"
 )
@@ -35,9 +34,9 @@ const (
 type HealthStatus string
 
 const (
-	HealthOK      HealthStatus = "OK"
+	HealthOK       HealthStatus = "OK"
 	HealthDegraded HealthStatus = "DEGRADED"
-	HealthDown    HealthStatus = "DOWN"
+	HealthDown     HealthStatus = "DOWN"
 )
 
 type Quality string
@@ -60,11 +59,11 @@ const (
 
 // Command sent from host/controller to driver
 type Command struct {
-	DeviceID       string          // core device UUID
-	EndpointKey    string          // e.g. "power"
-	CorrelationID  string
-	Payload        json.RawMessage  // endpoint payload
-	IssuedAt       time.Time
+	DeviceID      string // core device UUID
+	EndpointKey   string // e.g. "power"
+	CorrelationID string
+	Payload       json.RawMessage // endpoint payload
+	IssuedAt      time.Time
 }
 
 // CommandResult returned by driver (host may forward to caller)
@@ -76,12 +75,12 @@ type CommandResult struct {
 
 // Endpoint definition materialized into device_endpoint
 type Endpoint struct {
-	Key        string          // stable id: "power", "level"
-	Name       string
-	Direction  string          // INPUT|OUTPUT|BIDIR
-	Type       string          // taxonomy: switch/dimmer/...
+	Key         string // stable id: "power", "level"
+	Name        string
+	Direction   string          // INPUT|OUTPUT|BIDIR
+	Type        string          // taxonomy: switch/dimmer/...
 	ValueSchema json.RawMessage // JSON schema for payload/value
-	Meta       map[string]string
+	Meta        map[string]string
 }
 
 // Variable definition materialized into device_variable
@@ -117,20 +116,20 @@ const (
 )
 
 type DeviceEvent struct {
-	DeviceID  string
-	Type      string
-	Payload   json.RawMessage
-	Severity  EventSeverity
-	At        time.Time
+	DeviceID string
+	Type     string
+	Payload  json.RawMessage
+	Severity EventSeverity
+	At       time.Time
 }
 
 // Returned by hub drivers
 type ChildCandidate struct {
-	Protocol   Protocol
-	ChildRef   string // stable within hub namespace: zigbee ieee addr, rs485 slave id, etc.
+	Protocol     Protocol
+	ChildRef     string // stable within hub namespace: zigbee ieee addr, rs485 slave id, etc.
 	Manufacturer string
-	Model       string
-	Firmware    string
-	Fingerprint json.RawMessage // protocol-specific fingerprint (clusters/registers/etc.)
-	Signal      map[string]json.RawMessage // optional rssi/lqi/etc.
+	Model        string
+	Firmware     string
+	Fingerprint  json.RawMessage            // protocol-specific fingerprint (clusters/registers/etc.)
+	Signal       map[string]json.RawMessage // optional rssi/lqi/etc.
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	hostrpc "github.com/yourorg/controller-platform/pkg/driversdk/hostrpc"
+	hostrpc "github.com/NotrixInc/nx-driver-sdk/hostrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
