@@ -21,13 +21,13 @@ func (n *noopPublisher) UpsertEndpoints(ctx context.Context, deviceID string, ep
 func (n *noopPublisher) UpsertVariables(ctx context.Context, deviceID string, vars []Variable) error {
 	return nil
 }
-func (n *noopPublisher) PublishState(ctx context.Context, s StateUpdate) error { return nil }
+func (n *noopPublisher) PublishState(ctx context.Context, s StateUpdate) error       { return nil }
 func (n *noopPublisher) PublishVariable(ctx context.Context, v VariableUpdate) error { return nil }
-func (n *noopPublisher) PublishEvent(ctx context.Context, e DeviceEvent) error { return nil }
+func (n *noopPublisher) PublishEvent(ctx context.Context, e DeviceEvent) error       { return nil }
 
 // NewStdLogger returns a simple Logger backed by the standard library log package.
 // driver-host should provide a structured logger in production.
-func NewStdLogger() Logger { 
+func NewStdLogger() Logger {
 	l := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds)
 	return &stdLogger{l: l}
 }

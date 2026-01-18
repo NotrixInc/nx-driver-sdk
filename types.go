@@ -57,16 +57,70 @@ const (
 	SourceCloud  Source = "CLOUD"
 )
 
+// VariableType is the UX/data type expected by the controller/UI.
+// Spec: Boolean, Number, Range, Text, Password, Image, Video
+// Note: older drivers may still send values like "integer"; host/controller should normalize if needed.
+
+type VariableType string
+
+const (
+	VariableTypeBoolean  VariableType = "Boolean"
+	VariableTypeNumber   VariableType = "Number"
+	VariableTypeRange    VariableType = "Range"
+	VariableTypeText     VariableType = "Text"
+	VariableTypePassword VariableType = "Password"
+	VariableTypeImage    VariableType = "Image"
+	VariableTypeVideo    VariableType = "Video"
+)
+
+type EndpointDirection string
+
+const (
+	EndpointDirectionInput  EndpointDirection = "Input"
+	EndpointDirectionOutput EndpointDirection = "Output"
+	// Backward-compat for existing templates/drivers.
+	EndpointDirectionBidir EndpointDirection = "BIDIR"
+)
+
+type EndpointKind string
+
+const (
+	EndpointKindAudio   EndpointKind = "Audio"
+	EndpointKindVideo   EndpointKind = "Video"
+	EndpointKindControl EndpointKind = "Control"
+)
+
+type EndpointConnection string
+
+const (
+	EndpointConnectionHDMI           EndpointConnection = "HDMI"
+	EndpointConnectionVGA            EndpointConnection = "VGA"
+	EndpointConnectionComponent      EndpointConnection = "Component"
+	EndpointConnectionComposite      EndpointConnection = "Composite"
+	EndpointConnectionStereo         EndpointConnection = "Stereo"
+	EndpointConnectionSpeaker        EndpointConnection = "Speaker"
+	EndpointConnectionDigitalOptical EndpointConnection = "Digital_Optical"
+	EndpointConnectionDigitalCoax    EndpointConnection = "Digital_Coax"
+	EndpointConnectionIR             EndpointConnection = "IR"
+	EndpointConnectionIP             EndpointConnection = "IP"
+	EndpointConnectionZigBee         EndpointConnection = "ZigBee"
+	EndpointConnectionRS485          EndpointConnection = "RS485"
+	EndpointConnectionSerial         EndpointConnection = "Serial"
+	EndpointConnectionRelay          EndpointConnection = "Relay"
+)
+
 // Command sent from host/controller to driver
+
 type Command struct {
 	DeviceID      string // core device UUID
-	EndpointKey   string // e.g. "power"
+	EndpointKey   string // endpoint key
 	CorrelationID string
-	Payload       json.RawMessage // endpoint payload
+	Payload       json.RawMessage
 	IssuedAt      time.Time
 }
 
 // CommandResult returned by driver (host may forward to caller)
+
 type CommandResult struct {
 	Success bool
 	Message string
@@ -74,20 +128,56 @@ type CommandResult struct {
 }
 
 // Endpoint definition materialized into device_endpoint
+// - Direction: Input/Output
+// - Kind: Audio/Video/Control
+// - Connection: HDMI/VGA/.../IP/ZigBee/etc.
+// - Icon: controller/UI icon key or URL (connection-specific)
+// - MultiBinding: whether multiple bindings are allowed
+
 type Endpoint struct {
-	Key         string // stable id: "power", "level"
-	Name        string
-	Direction   string          // INPUT|OUTPUT|BIDIR
-	Type        string          // taxonomy: switch/dimmer/...
-	ValueSchema json.RawMessage // JSON schema for payload/value
+	Key          string // stable id within device
+	Name         string
+	Direction    EndpointDirection
+	Kind         EndpointKind
+	Connection   EndpointConnection
+	Icon         string
+	MultiBinding bool
+
+	// ControlType is the control semantics for Control endpoints (e.g. "switch", "dimmer", "toggle").
+	// Prefer this over Type.
+	ControlType string
+	// Type is kept for backward compatibility with older drivers.
+	// Deprecated: use ControlType.
+	Type        string
+	ValueSchema json.RawMessage
 	Meta        map[string]string
 }
 
+// NormalizeLegacyFields keeps legacy and new fields in sync.
+// Call this before persisting/serializing endpoints if you want both fields populated.
+func (e *Endpoint) NormalizeLegacyFields() {
+	if e == nil {
+		return
+	}
+	if e.ControlType == "" && e.Type != "" {
+		e.ControlType = e.Type
+	}
+	if e.Type == "" && e.ControlType != "" {
+		e.Type = e.ControlType
+	}
+}
+
 // Variable definition materialized into device_variable
+// - Readable/Writable describe whether the controller can read/write it.
+
 type Variable struct {
-	Key      string // "temperature_c"
-	Type     string // number/integer/boolean/string/json
-	Unit     string // "C", "%", etc.
+	Key      string
+	Type     VariableType
+	Unit     string
+	Readable bool
+	Writable bool
+
+	// Backward-compat: older code used ReadOnly.
 	ReadOnly bool
 	Meta     map[string]string
 }
@@ -124,12 +214,13 @@ type DeviceEvent struct {
 }
 
 // Returned by hub drivers
+
 type ChildCandidate struct {
 	Protocol     Protocol
-	ChildRef     string // stable within hub namespace: zigbee ieee addr, rs485 slave id, etc.
+	ChildRef     string
 	Manufacturer string
 	Model        string
 	Firmware     string
-	Fingerprint  json.RawMessage            // protocol-specific fingerprint (clusters/registers/etc.)
-	Signal       map[string]json.RawMessage // optional rssi/lqi/etc.
+	Fingerprint  json.RawMessage
+	Signal       map[string]json.RawMessage
 }
