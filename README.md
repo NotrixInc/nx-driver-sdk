@@ -8,6 +8,7 @@ This repository **does not** include a runnable host or a sample driver binary. 
 - Common types for commands, endpoints, variables, and events
 - Host-provided dependency interfaces (`Publisher`, `Logger`, `Clock`)
 - A tiny internal gRPC contract used for hub/child proxying (`hostrpc/*`)
+- Optional HTTP helpers for driver-to-driver messaging via controller-core (`DriverMessageClient`)
 
 ## Requirements
 
@@ -118,6 +119,21 @@ Helpers:
 - `(*HostProxyClient).ProxyCommand(...)` sends `hubDeviceID`, `childRef`, `endpointKey`, and raw payload bytes
 
 Note: The `DialHostProxy` comment mentions a `unix:` address format; on Windows, the host will typically provide a TCP address (for example `127.0.0.1:50051`) depending on your driver-host implementation.
+
+## Driver-to-driver messaging (HTTP)
+
+If your deployment enables it, drivers can exchange messages via controller-core using **driver IDs**.
+
+- Rules are configured in controller-core using bindings with `binding_type="DRIVER_TO_DRIVER"`.
+- Controller-core enforces a **strict allow-list**: if there is no matching allow rule, delivery is rejected.
+
+Use `DriverMessageClient` (see `driver_messages.go`):
+
+- `driversdk.NewDriverMessageClientFromEnv()` reads `CORE_HTTP_ADDR` or `CONTROLLER_CORE_HTTP_ADDR`.
+- `Publish(ctx, sourceDriverID, targetDriverID, type, payload, correlationID)`
+- `Poll(ctx, driverID, afterID, wait, limit)`
+
+To broadcast, pass an empty `targetDriverID` to `Publish(...)` (controller-core delivers to all allowed targets).
 
 ## Minimal examples
 

@@ -8,9 +8,10 @@ import (
 type DriverType string
 
 const (
-	DriverTypeDevice DriverType = "DEVICE"
-	DriverTypeHub    DriverType = "HUB"
-	DriverTypeChild  DriverType = "CHILD"
+	DriverTypeDevice DriverType = "DEVICE" // Hardware device driver that directly communicates with physical hardware
+	DriverTypeHub    DriverType = "HUB"    // Hub driver that manages child devices
+	DriverTypeChild  DriverType = "CHILD"  // Child device driver managed by a hub
+	DriverTypeUI     DriverType = "UI"     // Virtual/UI driver that requires binding to hardware device (no direct hardware access)
 )
 
 type Topology string
