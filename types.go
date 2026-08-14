@@ -108,6 +108,7 @@ const (
 	EndpointConnectionRS485          EndpointConnection = "RS485"
 	EndpointConnectionSerial         EndpointConnection = "Serial"
 	EndpointConnectionRelay          EndpointConnection = "Relay"
+	EndpointConnectionContact        EndpointConnection = "Contact"
 )
 
 // Command sent from host/controller to driver

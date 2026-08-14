@@ -16,9 +16,11 @@ const (
 	ControlTypeHumidity    = "humidity"
 	ControlTypeMotion      = "motion"
 	ControlTypeContact     = "contact"
+	ControlTypeIR          = "ir"
 	ControlTypeText        = "text"
 	ControlTypeSelect      = "select"
 	ControlTypeButton      = "button"
+	ControlTypeRelay       = "relay"
 )
 
 // Control represents a UI control for the driver
