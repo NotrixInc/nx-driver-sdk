@@ -63,6 +63,51 @@ Drivers typically publish:
 - `VariableUpdate` via `PublishVariable`
 - `DeviceEvent` via `PublishEvent`
 
+### How the console renders your controls
+
+The Control tab in the console builds itself from your `variables.schema.json`.
+It picks a widget from the shape of each writable variable, so in most cases you
+get the right control without saying anything extra:
+
+| What you declare | What the operator sees |
+|---|---|
+| `"type": "Boolean"` | a switch |
+| numeric with **both** `minimum` and `maximum` | a slider, labelled with `unit` |
+| numeric with no range (or only one end) | a number field |
+| any variable with `enum` | a dropdown |
+| `"type": "Image"` / `"type": "Video"` | a snapshot / live player |
+
+A dimmer therefore needs nothing beyond the range it already has:
+
+```json
+{ "variables": [
+  { "key": "brightness", "type": "Integer", "unit": "%",
+    "readable": true, "writable": true, "minimum": 0, "maximum": 100 },
+  { "key": "power", "type": "Boolean", "readable": true, "writable": true }
+]}
+```
+
+When inference gets it wrong, override it with an optional `control` block.
+Everything in it is optional and takes precedence over the plain fields:
+
+```json
+{ "key": "fan_speed", "type": "Integer", "minimum": 0, "maximum": 3,
+  "control": { "widget": "select", "options": [0, 1, 2, 3] } }
+```
+
+`widget` accepts `slider` (also `dimmer`, `level`, `position`), `switch`,
+`select`, `number`, `text`, `image`, `video`; alongside it you may set `min`,
+`max`, `step`, `unit`, and `options`. An unrecognised `widget` falls back to
+inference rather than rendering nothing, so a newer driver stays usable on an
+older console.
+
+Values written from the Control tab land in `meta.controls`, with
+`meta.controls_ts_unix_ms` bumped on every write — that timestamp is what tells
+your poll loop the orders changed. Do not look for them in `meta.variables`,
+which carries telemetry in the opposite direction. There is no Save button: each
+change is sent as it happens, with continuous controls debounced so a slider
+drag is one write rather than one per pixel.
+
 ### Configuration
 
 The host provides config as opaque JSON (`JSONConfig`). Drivers should decode it into a typed struct:

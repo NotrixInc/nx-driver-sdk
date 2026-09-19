@@ -153,6 +153,16 @@ type Endpoint struct {
 	Type        string
 	ValueSchema json.RawMessage
 	Meta        map[string]string
+
+	// CommandClass is what kind of command this endpoint carries: a value
+	// (ABSOLUTE), a step (RELATIVE), or a flip (TOGGLE). It decides whether the
+	// controller may collapse a pending command, retry a lost one, or replay it
+	// after the device has been away.
+	//
+	// Declared here so it is stated once per endpoint rather than at every call
+	// site. Empty means ABSOLUTE, which is what every endpoint declared before
+	// this field existed already meant.
+	CommandClass CommandClass
 }
 
 // NormalizeLegacyFields keeps legacy and new fields in sync.
