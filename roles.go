@@ -1,6 +1,9 @@
 package driversdk
 
-import "strings"
+import (
+	"encoding/json"
+	"strings"
+)
 
 // Roles replace the single-valued DriverType.
 //
@@ -77,6 +80,43 @@ type DeviceRole struct {
 	Transport    *Transport     `json:"transport,omitempty"`
 	Reachability *Reachability  `json:"reachability,omitempty"`
 	Switching    []Switching    `json:"switching,omitempty"`
+
+	// How the controller's AV resolver may drive the device (AV-ROUTING §3.4).
+	// All optional: DISCRETE power, no timers and discrete inputs is what a
+	// driver that declares none of them gets.
+	PowerMode PowerMode `json:"power_mode,omitempty"`
+	Timing    *Timing   `json:"timing,omitempty"`
+	InputMode InputMode `json:"input_mode,omitempty"`
+}
+
+// PowerMode says how the resolver may power a device. A toggle is only ever
+// sent when state says it is needed; with neither feedback nor a bound sense
+// the device must be ALWAYS_ON, or the resolver refuses to plan through it.
+type PowerMode string
+
+const (
+	PowerDiscrete           PowerMode = "DISCRETE"
+	PowerToggleWithFeedback PowerMode = "TOGGLE_WITH_FEEDBACK"
+	PowerToggleWithSense    PowerMode = "TOGGLE_WITH_SENSE"
+	PowerAlwaysOn           PowerMode = "ALWAYS_ON"
+)
+
+// InputMode: CYCLE is a single "Input" button, selectable only with
+// active_input feedback.
+type InputMode string
+
+const (
+	InputDiscrete InputMode = "DISCRETE"
+	InputCycle    InputMode = "CYCLE"
+)
+
+// Timing is the resolver's fallback when the device gives no feedback.
+// SettleMs is for a passive device (extractor, HDBaseT).
+type Timing struct {
+	PowerOnMs     int `json:"power_on_ms,omitempty"`
+	InputSettleMs int `json:"input_settle_ms,omitempty"`
+	CooldownMs    int `json:"cooldown_ms,omitempty"`
+	SettleMs      int `json:"settle_ms,omitempty"`
 }
 
 // UIRole is present when the driver presents a surface to a person.
@@ -115,10 +155,29 @@ type Reachability struct {
 // Switching declares what the binding graph cannot see: that an input reaches an
 // output *inside* a matrix. Without it a path through an amplifier is two
 // disconnected fragments and no traversal can join them.
+//
+// AV-ROUTING §3.1: Outputs is matrix shorthand ({output} in Selector is
+// substituted per output); an empty Selector is a fixed route (a player's
+// origin to its HDMI out); ExtraSteps run after the selector; routes sharing
+// Linked share one selector choice; LatencyMs is audio latency the route adds.
+// Selector names a cap.av_input@v1 instance, or "cap.av_input@v1" for the
+// device's un-instanced one. Inputs are endpoint keys — the resolver sends the
+// key, never a number, and the driver translates it.
 type Switching struct {
-	Output   string   `json:"output"`
-	Inputs   []string `json:"inputs"`
-	Selector string   `json:"selector"`
+	Output     string      `json:"output,omitempty"`
+	Outputs    []string    `json:"outputs,omitempty"`
+	Inputs     []string    `json:"inputs"`
+	Selector   string      `json:"selector,omitempty"`
+	ExtraSteps []ExtraStep `json:"extra_steps,omitempty"`
+	Linked     string      `json:"linked,omitempty"`
+	LatencyMs  int         `json:"latency_ms,omitempty"`
+}
+
+// ExtraStep is a command the resolver sends after a route's selector.
+type ExtraStep struct {
+	Instance string          `json:"instance"`
+	Command  string          `json:"command"`
+	Value    json.RawMessage `json:"value,omitempty"`
 }
 
 func (r Roles) HasDevice() bool { return r.Device != nil }

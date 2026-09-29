@@ -106,7 +106,11 @@ type DeviceModel struct {
 // could disagree, and the endpoint list and the control surface are the same
 // fact written twice.
 type ManifestCapability struct {
-	ID             string             `json:"id"`
+	ID string `json:"id"`
+
+	// Instance distinguishes copies of one capability on one device — zone 3's
+	// volume (AV-ROUTING §3.3). {var} is substituted by Repeat.
+	Instance       string             `json:"instance,omitempty"`
 	Repeat         *Repeat            `json:"repeat,omitempty"`
 	PublisherClass PublisherClass     `json:"publisher_class,omitempty"`
 	State          *StateDef          `json:"state,omitempty"`
@@ -176,7 +180,30 @@ type ManifestEndpoint struct {
 	// commanded 90 to a dimmer trimmed at 50 goes on showing 90 forever
 	// otherwise.
 	WantsEcho *bool `json:"wants_echo,omitempty"`
+
+	// AV-ROUTING §3.2. Terminal marks where media starts or ends inside the
+	// device (ORIGIN, SCREEN, SPEAKERS) and is never bindable, so it carries no
+	// Connector. Controls maps a capability to the instance controlling this
+	// zone or stream. Return marks HDMI ARC (AUDIO) or eARC (AUDIO_HD).
+	// LatchesNoSignal defaults to true for a SCREEN.
+	Terminal        string            `json:"terminal,omitempty"`
+	Controls        map[string]string `json:"controls,omitempty"`
+	Return          string            `json:"return,omitempty"`
+	LatchesNoSignal *bool             `json:"latches_no_signal,omitempty"`
 }
+
+// Terminals.
+const (
+	TerminalOrigin   = "ORIGIN"
+	TerminalScreen   = "SCREEN"
+	TerminalSpeakers = "SPEAKERS"
+)
+
+// Return channels on an HDMI endpoint.
+const (
+	ReturnAudio   = "AUDIO"
+	ReturnAudioHD = "AUDIO_HD"
+)
 
 type WireDef struct {
 	Read  *WireOp         `json:"read,omitempty"`
