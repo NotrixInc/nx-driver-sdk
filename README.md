@@ -129,6 +129,21 @@ func (d *MyDriver) Init(ctx context.Context, deps driversdk.Dependencies, cfg dr
 }
 ```
 
+### Light types
+
+What kind of light a device is (Sconce, Pendant, Step Light…) is a platform
+setting, not a driver one. The installer picks it in the console for any light,
+and the apps draw a matching icon. A light driver has nothing to do for this;
+in particular, do not add a light type to your config schema, or the installer
+gets two dropdowns that disagree.
+
+A driver may suggest a type, which shows while the installer leaves the setting
+on Automatic: an RGB driver might suggest Color. Publish one of
+`driversdk.LightTypes` under `driversdk.LightTypeVariable` (`light_type`);
+`driversdk.NormalizeLightType` turns other spellings (`step_light`, ` led `)
+into a list entry. A value not on the list is shown as Generic, and the
+controller says so in your driver's log. Adding a type is a platform change.
+
 ## Hub / Child model
 
 ### Hub drivers
