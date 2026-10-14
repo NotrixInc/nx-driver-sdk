@@ -713,6 +713,9 @@ func (b *EndpointBus) dispatch(batch EndpointBatch) {
 	// separately should use batch.CauseFor(item.EndpointKey) instead, so each
 	// branch inherits its own history rather than the first item's.
 	ctx := ContextWithCause(context.Background(), batch.Cause())
+	// And the trace, so an event logged while handling it (EventLog) lands in
+	// the same episode as the press that caused it.
+	ctx = ContextWithTrace(ctx, batch.Trace)
 
 	for _, h := range handlers {
 		if err := h(ctx, batch); err != nil && b.logger != nil {
