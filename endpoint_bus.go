@@ -164,6 +164,10 @@ type EndpointBatch struct {
 	// out which press produced which write.
 	Trace uint64 `json:"trace,omitempty"`
 
+	// Payload is a whole-message body, carried by kinds that address no
+	// endpoint — a controls notice (KindControls).
+	Payload json.RawMessage `json:"payload_json,omitempty"`
+
 	// Set when Kind is KindRefusal.
 	NackReason string `json:"nack_reason,omitempty"`
 	NackDetail string `json:"nack_detail,omitempty"`
@@ -190,6 +194,7 @@ type EndpointBus struct {
 	mu       sync.RWMutex
 	handlers []EndpointBatchHandler
 	refusals []RefusalHandler
+	controls []ControlsHandler
 	// declaredClasses is what DeclareEndpoints last published, so a send can
 	// take its command class from the endpoint definition rather than from the
 	// author remembering it at the call site.
@@ -198,6 +203,11 @@ type EndpointBus struct {
 	afterID int64
 	stopCh  chan struct{}
 	wg      sync.WaitGroup
+
+	// Owned by the poll goroutine: whether the start-up controls delivery was
+	// made, and the newest controls write delivered.
+	controlsSeeded bool
+	lastControlsTS int64
 }
 
 // RefusalHandler receives a refusal the controller put on this driver's queue.
@@ -624,6 +634,9 @@ func (b *EndpointBus) pollLoop() {
 		default:
 		}
 
+		// Read once at start, and again only while that keeps failing.
+		b.seedControls()
+
 		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 		batches, err := b.poll(ctx, b.afterID, 10*time.Second, 200)
 		cancel()
@@ -682,13 +695,13 @@ func (b *EndpointBus) poll(ctx context.Context, afterID int64, wait time.Duratio
 	}
 
 	// The same queue still carries legacy driver-addressed messages during the
-	// migration; those have no items and are not ours. A refusal has no items
-	// either and IS ours, so it is let through on its kind — without this it
-	// looks exactly like legacy traffic and every refusal the controller
-	// reports is dropped here.
+	// migration; those have no items and are not ours. A refusal and a controls
+	// or child-controls notice have no items either and ARE ours, so they are let through on
+	// their kind — without this they look exactly like legacy traffic and are
+	// dropped here.
 	batches := make([]EndpointBatch, 0, len(out.Messages))
 	for _, m := range out.Messages {
-		if m.Kind != KindRefusal && len(m.Items) == 0 {
+		if m.Kind != KindRefusal && m.Kind != KindControls && m.Kind != KindChildControls && len(m.Items) == 0 {
 			continue
 		}
 		batches = append(batches, m)
@@ -699,6 +712,9 @@ func (b *EndpointBus) poll(ctx context.Context, afterID int64, wait time.Duratio
 func (b *EndpointBus) dispatch(batch EndpointBatch) {
 	if batch.Kind == KindRefusal {
 		b.dispatchRefusal(batch)
+		return
+	}
+	if batch.Kind == KindControls && b.dispatchControls(batch) {
 		return
 	}
 

@@ -34,6 +34,8 @@ const (
 	LightTypeChandelier LightType = "Chandelier"
 	LightTypeCabinet    LightType = "Cabinet"
 	LightTypeStepLight  LightType = "Step Light"
+	LightTypeCeilingFan LightType = "Ceiling Fan"
+	LightTypeExhaustFan LightType = "Exhaust Fan"
 )
 
 // LightTypes is every light type, Generic first: the enum to offer in a
@@ -42,7 +44,7 @@ var LightTypes = []LightType{
 	LightTypeGeneric, LightTypeSconce, LightTypeFixture, LightTypeUplight,
 	LightTypeDownlight, LightTypeLED, LightTypePendant, LightTypeLamp,
 	LightTypeColor, LightTypeCCT, LightTypeChandelier, LightTypeCabinet,
-	LightTypeStepLight,
+	LightTypeStepLight, LightTypeCeilingFan, LightTypeExhaustFan,
 }
 
 // NormalizeLightType returns the LightTypes entry s names, in any letter case
