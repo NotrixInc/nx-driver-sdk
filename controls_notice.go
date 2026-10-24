@@ -47,6 +47,12 @@ type Controls struct {
 	// Set only on the Initial delivery, so a driver restores what it was
 	// without reading its row itself; nil on every later one.
 	Variables map[string]any
+	// Pending is set on the start-up delivery when these controls were written
+	// while no instance of the driver was there to receive them — it was
+	// restarting, crashed, or being updated — and core says so. Such a delivery
+	// is a request, not history: Initial is false, so a driver applies it like
+	// any write. Variables is still set, as on every start-up delivery.
+	Pending bool
 }
 
 // Number reads a numeric control, accepting numbers sent as strings.
@@ -148,15 +154,17 @@ func (b *EndpointBus) ReadControls(ctx context.Context) (Controls, error) {
 			TS        json.Number    `json:"controls_ts_unix_ms"`
 			Variables map[string]any `json:"variables"`
 		} `json:"meta_json"`
+		ControlsPending bool `json:"controls_pending"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&dev); err != nil {
 		return Controls{}, err
 	}
 	return Controls{
-		Values:   dev.MetaJSON.Controls,
-		Source:   dev.MetaJSON.Source,
+		Values:    dev.MetaJSON.Controls,
+		Source:    dev.MetaJSON.Source,
 		TSUnixMs:  numberToMs(dev.MetaJSON.TS),
 		Variables: dev.MetaJSON.Variables,
+		Pending:   dev.ControlsPending,
 	}, nil
 }
 
@@ -210,7 +218,9 @@ func (b *EndpointBus) seedControls() bool {
 	}
 	b.controlsSeeded = true
 	b.lastControlsTS = c.TSUnixMs
-	c.Initial = true
+	// Controls the previous instance never received are a request; anything
+	// else the row holds is a record of the past.
+	c.Initial = !c.Pending
 	b.deliverControls(handlers, c)
 	return true
 }

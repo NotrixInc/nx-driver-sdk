@@ -19,6 +19,11 @@ type fakeCore struct {
 	row      string
 	queue    []map[string]any
 	rowReads atomic.Int32
+	// peeks counts polls marked peek=1; firstPeek records whether the very
+	// first poll was one.
+	peeks     atomic.Int32
+	polls     atomic.Int32
+	firstPeek atomic.Bool
 }
 
 func (f *fakeCore) handler(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +36,12 @@ func (f *fakeCore) handler(w http.ResponseWriter, r *http.Request) {
 		f.mu.Unlock()
 		_, _ = w.Write([]byte(row))
 	case r.URL.Path == "/v1/driver-messages":
+		if f.polls.Add(1) == 1 && r.URL.Query().Get("peek") == "1" {
+			f.firstPeek.Store(true)
+		}
+		if r.URL.Query().Get("peek") == "1" {
+			f.peeks.Add(1)
+		}
 		f.mu.Lock()
 		msgs := f.queue
 		f.queue = nil
@@ -201,5 +212,39 @@ func TestChildControlsNoticeReachesTheBatchHandlers(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("the notice was dropped")
+	}
+}
+
+// Controls core reports pending — written while no instance of the driver was
+// there — are delivered as a request, not as history (TEST-PLAN.md §16.3
+// finding 1). They still carry the retained variables.
+func TestPendingControlsAreDeliveredAsARequest(t *testing.T) {
+	f := &fakeCore{row: `{"controls_pending":true,"meta_json":{"controls":{"brightness":40},"controls_source":"USER","controls_ts_unix_ms":300,"variables":{"brightness":10}}}`}
+	_, got := startControlsBus(t, f)
+
+	c := next(t, got)
+	if c.Initial || !c.Pending {
+		t.Fatalf("delivery = %+v, want a pending request (Initial false)", c)
+	}
+	if v, _ := c.Number("brightness"); v != 40 || c.Variables["brightness"] != float64(10) {
+		t.Fatalf("delivery = %+v", c)
+	}
+}
+
+// The catch-up poll at start is a peek, so core does not count what it skips
+// as received; the long polls after it are not.
+func TestCatchUpPollIsAPeek(t *testing.T) {
+	f := &fakeCore{row: `{"meta_json":{"controls":{},"controls_ts_unix_ms":1}}`}
+	_, got := startControlsBus(t, f)
+	next(t, got)
+	deadline := time.Now().Add(2 * time.Second)
+	for f.polls.Load() < 2 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !f.firstPeek.Load() {
+		t.Fatal("the first poll was not a peek")
+	}
+	if p, n := f.peeks.Load(), f.polls.Load(); p != 1 || n < 2 {
+		t.Fatalf("%d peeks over %d polls, want exactly the first", p, n)
 	}
 }

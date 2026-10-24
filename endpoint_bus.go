@@ -613,7 +613,10 @@ func (b *EndpointBus) fastForward() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	batches, err := b.poll(ctx, b.afterID, 0, 500)
+	// A peek: what was queued before this instance started is skipped, and core
+	// must not count it as received — a controls write this skips is then
+	// reported pending at the seed read (seedControls).
+	batches, err := b.poll(ctx, b.afterID, 0, 500, true)
 	if err != nil {
 		return
 	}
@@ -638,7 +641,7 @@ func (b *EndpointBus) pollLoop() {
 		b.seedControls()
 
 		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
-		batches, err := b.poll(ctx, b.afterID, 10*time.Second, 200)
+		batches, err := b.poll(ctx, b.afterID, 10*time.Second, 200, false)
 		cancel()
 
 		if err != nil {
@@ -664,9 +667,12 @@ func (b *EndpointBus) pollLoop() {
 
 // poll reads this device's queue. Deliveries are keyed by device id, so a driver
 // receives only what was addressed to the device it runs.
-func (b *EndpointBus) poll(ctx context.Context, afterID int64, wait time.Duration, limit int) ([]EndpointBatch, error) {
+func (b *EndpointBus) poll(ctx context.Context, afterID int64, wait time.Duration, limit int, peek bool) ([]EndpointBatch, error) {
 	url := fmt.Sprintf("%s/v1/driver-messages?driver_id=%s&after_id=%d&limit=%d",
 		b.baseURL, b.deviceID, afterID, limit)
+	if peek {
+		url += "&peek=1"
+	}
 	if wait > 0 {
 		url += fmt.Sprintf("&wait_ms=%d", int64(wait/time.Millisecond))
 	}
